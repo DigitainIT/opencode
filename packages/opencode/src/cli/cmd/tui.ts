@@ -188,6 +188,17 @@ export const TuiThreadCommand = cmd({
 
     const unguard = win32InstallCtrlCGuard()
     try {
+      const { AppRuntime } = await import("@/effect/app-runtime")
+      const { Effect, Result } = await import("effect")
+      const { requireConsoleLogin } = await import("./auth-gate")
+      const gate = await AppRuntime.runPromise(Effect.result(requireConsoleLogin())).catch((error: unknown) =>
+        Result.fail(error instanceof Error ? error : new Error(String(error))),
+      )
+      if (Result.isFailure(gate)) {
+        UI.error(gate.failure.message)
+        process.exitCode = 1
+        return
+      }
       const { TuiConfig } = await import("@/config/tui")
       if (args.fork && !args.continue && !args.session) {
         UI.error("--fork requires --continue or --session")

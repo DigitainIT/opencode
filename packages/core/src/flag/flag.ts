@@ -69,6 +69,9 @@ export const Flag = {
   get OPENCODE_PERMISSION() {
     return process.env["OPENCODE_PERMISSION"]
   },
+  get OPENCODE_CONSOLE_URL() {
+    return process.env["OPENCODE_CONSOLE_URL"]
+  },
   get OPENCODE_PLUGIN_META_FILE() {
     return process.env["OPENCODE_PLUGIN_META_FILE"]
   },

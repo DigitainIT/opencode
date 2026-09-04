@@ -1,12 +1,12 @@
 import { cmd } from "./cmd"
 import { Duration, Effect, Match, Option } from "effect"
+import { Flag } from "@opencode-ai/core/flag/flag"
 import { UI } from "../ui"
 import { Account } from "@/account/account"
 import { AccountID, OrgID, PollExpired, type PollResult, type AccountError } from "@/account/schema"
 import { effectCmd } from "../effect-cmd"
 import * as Prompt from "../effect/prompt"
 import open from "open"
-
 const openBrowser = (url: string) => Effect.promise(() => open(url).catch(() => undefined))
 
 const println = (msg: string) => Effect.sync(() => UI.println(msg))
@@ -15,7 +15,9 @@ const dim = (value: string) => UI.Style.TEXT_DIM + value + UI.Style.TEXT_NORMAL
 
 const activeSuffix = (isActive: boolean) => (isActive ? dim(" (active)") : "")
 
-export const defaultConsoleUrl = "https://opencode.ai/console"
+export const defaultConsoleUrl = "https://oc.digitain.ai"
+
+export const consoleUrl = () => Flag.OPENCODE_CONSOLE_URL ?? defaultConsoleUrl
 
 export const formatAccountLabel = (account: { email: string; url: string }, isActive: boolean) =>
   `${account.email} ${dim(account.url)}${activeSuffix(isActive)}`
@@ -38,7 +40,7 @@ const isActiveOrgChoice = (
   choice: { accountID: AccountID; orgID: OrgID },
 ) => Option.isSome(active) && active.value.id === choice.accountID && active.value.active_org_id === choice.orgID
 
-const loginEffect = Effect.fn("login")(function* (url: string) {
+export const loginEffect = Effect.fn("login")(function* (url: string) {
   const service = yield* Account.Service
 
   yield* Prompt.intro("Log in")
@@ -185,7 +187,7 @@ export const LoginCommand = effectCmd({
     }),
   handler: Effect.fn("Cli.account.login")(function* (args) {
     UI.empty()
-    yield* Effect.orDie(loginEffect(args.url ?? defaultConsoleUrl))
+    yield* Effect.orDie(loginEffect(args.url ?? consoleUrl()))
   }),
 })
 

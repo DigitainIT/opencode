@@ -4,6 +4,7 @@ import type { IntegrationOAuthMethodRegistration } from "@opencode-ai/plugin/v2/
 import { define } from "@opencode-ai/plugin/v2/effect/plugin"
 import type { CredentialValue } from "@opencode-ai/sdk/v2/types"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { Flag } from "../../flag/flag"
 import { EventV2 } from "../../event"
 import { Credential } from "../../credential"
 import { Integration } from "../../integration"
@@ -13,7 +14,7 @@ import { ConfigProviderV1 } from "../../v1/config/provider"
 import { ConfigProviderOptionsV1 } from "../../v1/config/provider-options"
 import { ConfigV1 } from "../../v1/config/config"
 
-const defaultServer = "https://opencode.ai/console"
+const serverUrl = () => Flag.OPENCODE_CONSOLE_URL ?? "https://oc.digitain.ai"
 const clientID = "opencode-cli"
 const methodID = Integration.MethodID.make("device")
 const RemoteResponse = Schema.Struct({ config: ConfigV1.Info })
@@ -44,10 +45,10 @@ function oauth(http: HttpClient.HttpClient) {
     },
     authorize: () =>
       Effect.gen(function* () {
-        const device = yield* post(http, `${defaultServer}/auth/device/code`, { client_id: clientID }, Device)
+        const device = yield* post(http, `${serverUrl()}/auth/device/code`, { client_id: clientID }, Device)
         const verification = yield* Effect.try({
           try: () => {
-            const url = new URL(device.verification_uri_complete, `${defaultServer}/`)
+            const url = new URL(device.verification_uri_complete, `${serverUrl()}/`)
             if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("expected HTTP(S)")
             return url
           },
@@ -58,12 +59,12 @@ function oauth(http: HttpClient.HttpClient) {
           mode: "auto" as const,
           url: verification.href,
           instructions: `Enter code: ${device.user_code}`,
-          callback: poll(http, defaultServer, device.device_code, Duration.seconds(device.interval)),
+          callback: poll(http, serverUrl(), device.device_code, Duration.seconds(device.interval)),
         }
       }),
     refresh: (credential) =>
       Effect.gen(function* () {
-        const server = typeof credential.metadata?.server === "string" ? credential.metadata.server : defaultServer
+        const server = typeof credential.metadata?.server === "string" ? credential.metadata.server : serverUrl()
         const token = yield* post(
           http,
           `${server}/auth/device/token`,
@@ -198,7 +199,7 @@ export const OpencodePlugin = define<HttpClient.HttpClient | EventV2.Service | S
 
 function fetchProviders(http: HttpClient.HttpClient, value: CredentialValue) {
   const metadata = value.metadata
-  const server = typeof metadata?.server === "string" ? metadata.server : defaultServer
+  const server = typeof metadata?.server === "string" ? metadata.server : serverUrl()
   const orgID = typeof metadata?.orgID === "string" ? metadata.orgID : undefined
   const token = value.type === "oauth" ? value.access : value.key
   return http
