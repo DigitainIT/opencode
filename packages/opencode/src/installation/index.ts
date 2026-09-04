@@ -62,6 +62,12 @@ export class UpgradeFailedError extends Schema.TaggedErrorClass<UpgradeFailedErr
 
 // Response schemas for external version APIs
 const GitHubRelease = Schema.Struct({ tag_name: Schema.String })
+
+const RELEASE_REPO = "DigitainIT/opencode"
+
+const installScriptUrl = (channel: string) =>
+  channel === "dev" ? "https://oc-dev.digitain.ai/install" : "https://oc.digitain.ai/install"
+
 const NpmPackage = Schema.Struct({ version: Schema.String })
 const BrewFormula = Schema.Struct({ versions: Schema.Struct({ stable: Schema.String }) })
 const BrewInfoV2 = Schema.Struct({
@@ -144,7 +150,7 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
 
     const upgradeCurl = Effect.fnUntraced(
       function* (target: string) {
-        const response = yield* httpOk.execute(HttpClientRequest.get("https://opencode.ai/install"))
+        const response = yield* httpOk.execute(HttpClientRequest.get(installScriptUrl(InstallationChannel)))
         const body = yield* response.text
         const bodyBytes = new TextEncoder().encode(body)
         const shell = yield* upgradeScriptShell()
@@ -254,13 +260,28 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
           return data.version
         }
 
+        if (InstallationChannel === "latest") {
+          const response = yield* httpOk.execute(
+            HttpClientRequest.get(`https://api.github.com/repos/${RELEASE_REPO}/releases/latest`).pipe(
+              HttpClientRequest.acceptJson,
+            ),
+          )
+          const data = yield* HttpClientResponse.schemaBodyJson(GitHubRelease)(response)
+          return data.tag_name.replace(/^v/, "")
+        }
+
         const response = yield* httpOk.execute(
-          HttpClientRequest.get("https://api.github.com/repos/anomalyco/opencode/releases/latest").pipe(
+          HttpClientRequest.get(`https://api.github.com/repos/${RELEASE_REPO}/releases?per_page=20`).pipe(
             HttpClientRequest.acceptJson,
           ),
         )
-        const data = yield* HttpClientResponse.schemaBodyJson(GitHubRelease)(response)
-        return data.tag_name.replace(/^v/, "")
+        const releases = yield* HttpClientResponse.schemaBodyJson(Schema.Array(GitHubRelease))(response)
+        const prefix = `v0.0.0-${InstallationChannel}-`
+        const tag = releases.map((release) => release.tag_name).find((name) => name.startsWith(prefix))
+        if (!tag) {
+          return yield* new UpgradeFailedError({ stderr: `No ${InstallationChannel} release found` })
+        }
+        return tag.replace(/^v/, "")
       }, Effect.orDie),
       upgrade: Effect.fn("Installation.upgrade")(function* (m: Method, target: string) {
         let upgradeResult: { code: number; stdout: string; stderr: string } | undefined

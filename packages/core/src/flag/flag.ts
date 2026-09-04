@@ -1,5 +1,11 @@
 import { Config } from "effect"
 
+declare global {
+  const OPENCODE_CONSOLE_URL_BAKED: string
+}
+
+const bakedConsoleUrl = typeof OPENCODE_CONSOLE_URL_BAKED === "string" ? OPENCODE_CONSOLE_URL_BAKED : ""
+
 export function truthy(key: string) {
   const value = process.env[key]?.toLowerCase()
   return value === "true" || value === "1"
@@ -70,7 +76,7 @@ export const Flag = {
     return process.env["OPENCODE_PERMISSION"]
   },
   get OPENCODE_CONSOLE_URL() {
-    return process.env["OPENCODE_CONSOLE_URL"]
+    return process.env["OPENCODE_CONSOLE_URL"] ?? (bakedConsoleUrl || undefined)
   },
   get OPENCODE_PLUGIN_META_FILE() {
     return process.env["OPENCODE_PLUGIN_META_FILE"]

@@ -68,6 +68,9 @@ done
 INSTALL_DIR=$HOME/.opencode/bin
 mkdir -p "$INSTALL_DIR"
 
+REPO=${OPENCODE_INSTALL_REPO:-DigitainIT/opencode}
+CHANNEL=${CHANNEL:-dev}
+
 # If --binary is provided, skip all download/detection logic
 if [ -n "$binary_path" ]; then
     if [ ! -f "$binary_path" ]; then
@@ -181,8 +184,18 @@ else
     fi
 
     if [ -z "$requested_version" ]; then
-        url="https://github.com/anomalyco/opencode/releases/latest/download/$filename"
-        specific_version=$(curl -s https://api.github.com/repos/anomalyco/opencode/releases/latest | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
+        if [ "$CHANNEL" = "latest" ]; then
+            url="https://github.com/${REPO}/releases/latest/download/$filename"
+            specific_version=$(curl -s "https://api.github.com/repos/${REPO}/releases/latest" | tr ',' '\n' | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n 1)
+        else
+            tag=$(curl -s "https://api.github.com/repos/${REPO}/releases?per_page=20" | tr '{},' '\n\n\n' | sed -n 's/^ *"tag_name": *"\(v0\.0\.0-'"${CHANNEL}"'-[0-9]*\)".*/\1/p' | head -n 1)
+            if [ -z "$tag" ]; then
+                echo -e "${RED}Failed to find a ${CHANNEL} release${NC}"
+                exit 1
+            fi
+            specific_version="${tag#v}"
+            url="https://github.com/${REPO}/releases/download/${tag}/$filename"
+        fi
 
         if [[ $? -ne 0 || -z "$specific_version" ]]; then
             echo -e "${RED}Failed to fetch version information${NC}"
@@ -191,14 +204,14 @@ else
     else
         # Strip leading 'v' if present
         requested_version="${requested_version#v}"
-        url="https://github.com/anomalyco/opencode/releases/download/v${requested_version}/$filename"
+        url="https://github.com/${REPO}/releases/download/v${requested_version}/$filename"
         specific_version=$requested_version
 
         # Verify the release exists before downloading
-        http_status=$(curl -sI -o /dev/null -w "%{http_code}" "https://github.com/anomalyco/opencode/releases/tag/v${requested_version}")
+        http_status=$(curl -sI -o /dev/null -w "%{http_code}" "https://github.com/${REPO}/releases/tag/v${requested_version}")
         if [ "$http_status" = "404" ]; then
             echo -e "${RED}Error: Release v${requested_version} not found${NC}"
-            echo -e "${MUTED}Available releases: https://github.com/anomalyco/opencode/releases${NC}"
+            echo -e "${MUTED}Available releases: https://github.com/${REPO}/releases${NC}"
             exit 1
         fi
     fi
