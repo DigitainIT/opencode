@@ -19,7 +19,15 @@ async function publish(dir: string, name: string, version: string) {
     return
   }
   await $`bun pm pack`.cwd(dir)
-  await $`npm publish *.tgz --access public --tag ${Script.channel}`.cwd(dir)
+  // npm rate-limits bursts (E429) when publishing many packages back-to-back,
+  // so retry with a delay before giving up.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const result = await $`npm publish *.tgz --access public --tag ${Script.channel}`.cwd(dir).nothrow()
+    if (result.exitCode === 0) return
+    if (attempt === 3) process.exit(result.exitCode)
+    console.log(`npm publish of ${name} failed (attempt ${attempt}/3), retrying in 60s...`)
+    await Bun.sleep(60_000)
+  }
 }
 
 const binaries: Record<string, string> = {}
@@ -71,8 +79,7 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
   ),
 )
 
-const tasks = Object.entries(binaries).map(async ([name]) => {
-  await publish(`./dist/${name.replace(/^digi-/, "")}`, name, binaries[name])
-})
-await Promise.all(tasks)
+for (const [name, version] of Object.entries(binaries)) {
+  await publish(`./dist/${name.replace(/^digi-/, "")}`, name, version)
+}
 await publish(`./dist/${pkg.name}`, `digi-${pkg.name}`, version)
