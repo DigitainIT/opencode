@@ -77,3 +77,34 @@ jobs:
 
     outputs:
       version: ${{ needs.version.outputs.version }}
+
+  publish-npm:
+    needs:
+      - version
+      - build-cli
+    runs-on: ubuntu-latest
+    if: github.repository == 'DigitainIT/opencode'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-bun
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: opencode-cli
+          path: packages/opencode/dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: opencode-cli-windows
+          path: packages/opencode/dist
+
+      - name: Publish to npm
+        run: ./packages/opencode/script/publish.ts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
