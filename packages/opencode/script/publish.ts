@@ -32,13 +32,13 @@ async function publish(dir: string, name: string, version: string) {
   }
 }
 
-const binaries: Record<string, string> = {}
+const binaries: Record<string, { version: string; dir: string }> = {}
 for (const filepath of new Bun.Glob("*/package.json").scanSync({ cwd: "./dist" })) {
   const pkg = await Bun.file(`./dist/${filepath}`).json()
-  binaries[pkg.name] = pkg.version
+  binaries[pkg.name] = { version: pkg.version, dir: filepath.split("/")[0] }
 }
 console.log("binaries", binaries)
-const version = Object.values(binaries)[0]
+const version = Object.values(binaries)[0].version
 
 await $`mkdir -p ./dist/${pkg.name}`
 await $`mkdir -p ./dist/${pkg.name}/bin`
@@ -74,14 +74,14 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
       license: pkg.license,
       os: ["darwin", "linux", "win32"],
       cpu: ["arm64", "x64"],
-      optionalDependencies: binaries,
+      optionalDependencies: Object.fromEntries(Object.entries(binaries).map(([name, b]) => [name, b.version])),
     },
     null,
     2,
   ),
 )
 
-for (const [name, version] of Object.entries(binaries)) {
-  await publish(`./dist/${name.replace(/^digi-/, "")}`, name, version)
+for (const [name, { version, dir }] of Object.entries(binaries)) {
+  await publish(`./dist/${dir}`, name, version)
 }
 await publish(`./dist/${pkg.name}`, `digi-${pkg.name}`, version)

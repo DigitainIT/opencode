@@ -14,7 +14,7 @@ const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, "package.jso
 const platformMap = {
   darwin: "darwin",
   linux: "linux",
-  win32: "windows",
+  win32: "win",
 }
 const archMap = {
   x64: "x64",
@@ -25,7 +25,7 @@ const archMap = {
 const platform = platformMap[os.platform()] ?? os.platform()
 const arch = archMap[os.arch()] ?? os.arch()
 const base = `digi-opencode-${platform}-${arch}`
-const sourceBinary = platform === "windows" ? "opencode.exe" : "opencode"
+const sourceBinary = platform === "win" ? "opencode.exe" : "opencode"
 const targetBinary = path.join(__dirname, "bin", "opencode.exe")
 
 function supportsAvx2() {
