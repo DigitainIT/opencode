@@ -46,15 +46,15 @@ await $`cp ./script/postinstall.mjs ./dist/${pkg.name}/postinstall.mjs`
 await Bun.file(`./dist/${pkg.name}/LICENSE`).write(await Bun.file("../../LICENSE").text())
 await Bun.file(`./dist/${pkg.name}/bin/${pkg.name}.exe`).write(
   [
-    `echo "Error: digi-${pkg.name}'s postinstall script was not run." >&2`,
+    `echo "Error: @digitain-com/${pkg.name}'s postinstall script was not run." >&2`,
     'echo "" >&2',
     'echo "This occurs when using --ignore-scripts during installation, or when using a" >&2',
     'echo "package manager like pnpm that does not run postinstall scripts by default." >&2',
     'echo "" >&2',
     'echo "To fix this, run the postinstall script manually:" >&2',
-    `echo "  cd node_modules/digi-${pkg.name} && node postinstall.mjs" >&2`,
+    `echo "  cd node_modules/@digitain-com/${pkg.name} && node postinstall.mjs" >&2`,
     'echo "" >&2',
-    `echo "Or reinstall digi-${pkg.name} without the --ignore-scripts flag." >&2`,
+    `echo "Or reinstall @digitain-com/${pkg.name} without the --ignore-scripts flag." >&2`,
     "exit 1",
     "",
   ].join("\n"),
@@ -63,7 +63,7 @@ await Bun.file(`./dist/${pkg.name}/bin/${pkg.name}.exe`).write(
 await Bun.file(`./dist/${pkg.name}/package.json`).write(
   JSON.stringify(
     {
-      name: "digi-" + pkg.name,
+      name: "@digitain-com/" + pkg.name,
       bin: {
         [pkg.name]: `./bin/${pkg.name}.exe`,
       },
@@ -84,4 +84,4 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
 for (const [name, { version, dir }] of Object.entries(binaries)) {
   await publish(`./dist/${dir}`, name, version)
 }
-await publish(`./dist/${pkg.name}`, `digi-${pkg.name}`, version)
+await publish(`./dist/${pkg.name}`, `@digitain-com/${pkg.name}`, version)

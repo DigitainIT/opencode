@@ -24,7 +24,7 @@ const archMap = {
 
 const platform = platformMap[os.platform()] ?? os.platform()
 const arch = archMap[os.arch()] ?? os.arch()
-const base = `digi-opencode-${platform}-${arch}`
+const base = `@digitain-com/opencode-${platform}-${arch}`
 const sourceBinary = platform === "win" ? "opencode.exe" : "opencode"
 const targetBinary = path.join(__dirname, "bin", "opencode.exe")
 

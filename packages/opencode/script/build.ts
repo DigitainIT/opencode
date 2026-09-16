@@ -219,7 +219,7 @@ for (const item of targets) {
   await Bun.file(`dist/${name}/package.json`).write(
     JSON.stringify(
       {
-        name: `digi-${name.replace("windows", "win")}`,
+        name: `@digitain-com/${name.replace("windows", "win")}`,
         version: Script.version,
         preferUnplugged: true,
         os: [item.os],
