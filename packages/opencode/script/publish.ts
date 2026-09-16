@@ -64,6 +64,7 @@ await Bun.file(`./dist/${pkg.name}/package.json`).write(
   JSON.stringify(
     {
       name: "@digitain-com/" + pkg.name,
+      repository: { type: "git", url: "https://github.com/DigitainIT/opencode" },
       bin: {
         [pkg.name]: `./bin/${pkg.name}.exe`,
       },

@@ -221,6 +221,7 @@ for (const item of targets) {
       {
         name: `@digitain-com/${name.replace("windows", "win")}`,
         version: Script.version,
+        repository: { type: "git", url: "https://github.com/DigitainIT/opencode" },
         preferUnplugged: true,
         os: [item.os],
         cpu: [item.arch],
