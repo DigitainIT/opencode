@@ -21,12 +21,14 @@ async function publish(dir: string, name: string, version: string) {
   await $`bun pm pack`.cwd(dir)
   // npm rate-limits bursts (E429) when publishing many packages back-to-back,
   // so retry with a delay before giving up.
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  const attempts = 6
+  for (let attempt = 1; attempt <= attempts; attempt++) {
     const result = await $`npm publish *.tgz --access public --tag ${Script.channel}`.cwd(dir).nothrow()
     if (result.exitCode === 0) return
-    if (attempt === 3) process.exit(result.exitCode)
-    console.log(`npm publish of ${name} failed (attempt ${attempt}/3), retrying in 60s...`)
-    await Bun.sleep(60_000)
+    if (attempt === attempts) process.exit(result.exitCode)
+    const delay = Math.min(120_000 * attempt, 600_000)
+    console.log(`npm publish of ${name} failed (attempt ${attempt}/${attempts}), retrying in ${delay / 1000}s...`)
+    await Bun.sleep(delay)
   }
 }
 
