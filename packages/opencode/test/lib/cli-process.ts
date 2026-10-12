@@ -63,6 +63,9 @@ function isolatedEnv(home: string, configJson: string): Record<string, string> {
   return {
     OPENCODE_TEST_HOME: home,
     HOME: home,
+    // run.ts resolves the project root from PWD; scrub the inherited value so
+    // the spawned child cannot escape into the caller's project.
+    PWD: home,
     XDG_CONFIG_HOME: path.join(home, ".config"),
     XDG_DATA_HOME: path.join(home, ".local/share"),
     XDG_STATE_HOME: path.join(home, ".local/state"),
@@ -202,7 +205,26 @@ export function withCliFixture<A, E>(
     )
 
     const configJson = JSON.stringify(testProviderConfig(llm.url))
-    const env = isolatedEnv(home, configJson)
+
+    // The CLI gates `run`/`tui` behind a console login. Stub the console so
+    // spawned processes can pass the gate with OPENCODE_CONSOLE_TOKEN.
+    const consoleStub = Bun.serve({
+      port: 0,
+      fetch(req) {
+        const url = new URL(req.url)
+        if (url.pathname === "/api/user" && req.headers.get("authorization") === "Bearer test-console-token") {
+          return Response.json({ id: "test-user", email: "test@example.com" })
+        }
+        return new Response(null, { status: 401 })
+      },
+    })
+    yield* Effect.addFinalizer(() => Effect.sync(() => consoleStub.stop(true)))
+
+    const env = {
+      ...isolatedEnv(home, configJson),
+      OPENCODE_CONSOLE_URL: consoleStub.url.origin,
+      OPENCODE_CONSOLE_TOKEN: "test-console-token",
+    }
 
     const spawn = Effect.fn("opencode.spawn")(function* (args: string[], opts?: SpawnOpts) {
       const start = Date.now()

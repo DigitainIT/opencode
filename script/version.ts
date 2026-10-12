@@ -7,7 +7,9 @@ const output = [`version=${Script.version}`]
 const sha = process.env.GITHUB_SHA ?? (await $`git rev-parse HEAD`.text()).trim()
 
 if (!Script.preview) {
-  await $`bun script/changelog.ts --to ${sha}`.cwd(process.cwd())
+  // Changelog generation shells out to `opencode run`, which is optional in CI
+  // (no console login); fall back to "No notable changes" when unavailable.
+  await $`bun script/changelog.ts --to ${sha}`.cwd(process.cwd()).nothrow()
   const file = `${process.cwd()}/UPCOMING_CHANGELOG.md`
   const body = await Bun.file(file)
     .text()

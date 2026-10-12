@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - dev
+      - production
   workflow_dispatch:
     inputs:
       version:
@@ -16,6 +17,10 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.version }}
 
 permissions:
   contents: write
+
+env:
+  OPENCODE_CHANNEL: ${{ github.ref_name == 'production' && 'latest' || 'dev' }}
+  OPENCODE_CONSOLE_URL: ${{ github.ref_name == 'production' && 'https://oc.digitain.ai' || 'https://oc-dev.digitain.ai' }}
 
 jobs:
   version:
@@ -59,7 +64,6 @@ jobs:
         env:
           OPENCODE_VERSION: ${{ needs.version.outputs.version }}
           OPENCODE_RELEASE: ${{ needs.version.outputs.release }}
-          OPENCODE_CONSOLE_URL: https://oc-dev.digitain.ai
           GH_REPO: ${{ needs.version.outputs.repo }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -109,3 +113,36 @@ jobs:
 
       - name: Publish to npm
         run: ./packages/opencode/script/publish.ts
+
+  smoke:
+    needs:
+      - version
+      - build-cli
+      - publish-npm
+    runs-on: ubuntu-latest
+    if: github.repository == 'DigitainIT/opencode'
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: opencode-cli
+          path: packages/opencode/dist
+
+      - name: Smoke test binary
+        run: |
+          chmod +x packages/opencode/dist/opencode-linux-x64-baseline/bin/opencode
+          packages/opencode/dist/opencode-linux-x64-baseline/bin/opencode --version
+
+      - name: Smoke test npm
+        run: |
+          test "$(npm view @digitain-com/opencode@${{ needs.version.outputs.version }} version)" = "${{ needs.version.outputs.version }}"
+          npm dist-tag ls @digitain-com/opencode | grep -q "^${OPENCODE_CHANNEL}: ${{ needs.version.outputs.version }}$"
+
+      - name: Publish GitHub release
+        run: gh release edit v${{ needs.version.outputs.version }} --draft=false --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

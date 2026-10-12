@@ -180,6 +180,7 @@ export interface Interface {
   readonly token: (accountID: AccountID) => Effect.Effect<Option.Option<AccessToken>, AccountError>
   readonly login: (url: string) => Effect.Effect<Login, AccountError>
   readonly poll: (input: Login) => Effect.Effect<PollResult, AccountError>
+  readonly validate: (url: string, token: string) => Effect.Effect<"valid" | "revoked" | "transient">
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Account") {}
@@ -460,6 +461,27 @@ const layer: Layer.Layer<Service, never, AccountRepo.Service | HttpClient.HttpCl
       return new PollSuccess({ email: account.email })
     })
 
+    // Classifies a raw token against the console so the CLI gate can accept
+    // OPENCODE_CONSOLE_TOKEN in non-interactive environments without an
+    // account row. Never fails: unreachable servers report "transient".
+    const validate = Effect.fn("Account.validate")(function* (url: string, token: string) {
+      return yield* http
+        .execute(
+          HttpClientRequest.get(`${url}/api/user`).pipe(
+            HttpClientRequest.acceptJson,
+            HttpClientRequest.bearerToken(token),
+          ),
+        )
+        .pipe(
+          Effect.map((response): "valid" | "revoked" | "transient" => {
+            if (response.status >= 200 && response.status < 300) return "valid"
+            if (response.status === 401 || response.status === 403) return "revoked"
+            return "transient"
+          }),
+          Effect.catch(() => Effect.succeed("transient" as const)),
+        )
+    })
+
     return Service.of({
       active: repo.active,
       activeOrg,
@@ -472,6 +494,7 @@ const layer: Layer.Layer<Service, never, AccountRepo.Service | HttpClient.HttpCl
       token,
       login,
       poll,
+      validate,
     })
   }),
 )

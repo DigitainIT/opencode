@@ -9,6 +9,7 @@ on:
 
 jobs:
   sync-locales:
+    if: github.repository == 'anomalyco/opencode'
     if: false
     #if: github.actor != 'opencode-agent[bot]'
     runs-on: blacksmith-4vcpu-ubuntu-2404

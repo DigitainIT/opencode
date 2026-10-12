@@ -78,6 +78,9 @@ export const Flag = {
   get OPENCODE_CONSOLE_URL() {
     return process.env["OPENCODE_CONSOLE_URL"] ?? (bakedConsoleUrl || undefined)
   },
+  get OPENCODE_CONSOLE_TOKEN() {
+    return process.env["OPENCODE_CONSOLE_TOKEN"]
+  },
   get OPENCODE_PLUGIN_META_FILE() {
     return process.env["OPENCODE_PLUGIN_META_FILE"]
   },

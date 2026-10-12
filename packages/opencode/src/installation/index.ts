@@ -260,7 +260,8 @@ const layer: Layer.Layer<Service, never, HttpClient.HttpClient | AppProcess.Serv
           return data.version
         }
 
-        if (InstallationChannel === "latest") {
+        // "local" (source builds) has no prerelease channel; check the latest release
+        if (InstallationChannel === "latest" || InstallationChannel === "local") {
           const response = yield* httpOk.execute(
             HttpClientRequest.get(`https://api.github.com/repos/${RELEASE_REPO}/releases/latest`).pipe(
               HttpClientRequest.acceptJson,

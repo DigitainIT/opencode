@@ -6,6 +6,7 @@ on:
 
 jobs:
   check-guidelines:
+    if: github.repository == 'anomalyco/opencode'
     if: |
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/review') &&
