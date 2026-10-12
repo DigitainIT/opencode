@@ -12,6 +12,8 @@ export async function upgrade() {
   const latest = await Installation.latest(method).catch(() => {})
   if (!latest) return
 
+  if (InstallationVersion === latest) return
+
   if (Flag.OPENCODE_ALWAYS_NOTIFY_UPDATE || InstallationChannel !== "latest") {
     GlobalBus.emit("event", {
       directory: "global",
@@ -22,8 +24,6 @@ export async function upgrade() {
     })
     return
   }
-
-  if (InstallationVersion === latest) return
 
   const kind = Installation.getReleaseType(InstallationVersion, latest)
 
